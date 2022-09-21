@@ -1,0 +1,37 @@
+{
+    "version": "2.0",
+    "routeKey": "ANY /create-freshservice-ticket",
+    "rawPath": "/default/create-freshservice-ticket",
+    "rawQueryString": "",
+    "headers": {
+        "accept-encoding": "gzip, deflate, br",
+        "content-length": "510",
+        "content-type": "application/json",
+        "host": "b5r0cii5dc.execute-api.us-west-2.amazonaws.com",
+        "user-agent": "Mozilla/5.0 (compatible; Google-Apps-Script; beanserver; +https://script.google.com; id: UAEmdDd-pu5V5wvtarwQNfHVrtXKHCHhYLTc)",
+        "x-amzn-trace-id": "Root=1-6287db0b-67a01c8c43e05e0d562344c5",
+        "x-forwarded-for": "107.178.195.199",
+        "x-forwarded-port": "443",
+        "x-forwarded-proto": "https"
+    },
+    "requestContext": {
+        "accountId": "536572285009",
+        "apiId": "b5r0cii5dc",
+        "domainName": "b5r0cii5dc.execute-api.us-west-2.amazonaws.com",
+        "domainPrefix": "b5r0cii5dc",
+        "http": {
+            "method": "POST",
+            "path": "/default/create-freshservice-ticket",
+            "protocol": "HTTP/1.1",
+            "sourceIp": "107.178.195.199",
+            "userAgent": "Mozilla/5.0 (compatible; Google-Apps-Script; beanserver; +https://script.google.com; id: UAEmdDd-pu5V5wvtarwQNfHVrtXKHCHhYLTc)"
+        },
+        "requestId": "Sb8p3jElPHcEP1g=",
+        "routeKey": "ANY /create-freshservice-ticket",
+        "stage": "default",
+        "time": "20/May/2022:18:16:43 +0000",
+        "timeEpoch": 1653070603707
+    },
+    "body": "{\"name\":\"André\",\"email\":\"asoares@covidclinic.org\",\"due_by\":\"2022-12-31T00:00:00.000Z\",\"fr_due_by\":\"2022-05-21T18:16:43.408Z\",\"type\":\"Incident\",\"status\":2,\"priority\":3,\"description\":\"Name: André\\nWhat is your department (i.e., marketing, schools, etc.): IT\\nEmail address: asoares@covidclinic.org\\nWhat's your manager's email address?: rilopez@covidclinic.org\\nDate Needed/Planned: 2022-12-31\\nPriority: 3\\nSubject: test\\nDescription of Request: tes\",\"subject\":\"test\",\"tags\":[\"source:google-forms\",\"request\"]}",
+    "isBase64Encoded": false
+}
