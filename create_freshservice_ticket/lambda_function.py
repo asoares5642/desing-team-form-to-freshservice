@@ -33,6 +33,11 @@ def lambda_handler(event, context):
         attachments = body['attachments']
         del body['attachments']
 
+        # Prepare the multipart data
+        multipart_data = dict()
+        for key in body:
+            multipart_data_key = key
+
         print(attachments)
 
         # The attachments are list of Google Drive file IDs
@@ -48,6 +53,7 @@ def lambda_handler(event, context):
         # Download the files
         files = {'attachments[]': []}
         for attachment in attachments:
+                
             print(attachment)
             # Get the file name and mime type
             file_metadata = service.files().get(fileId=attachment, fields='name, mimeType').execute()
@@ -63,14 +69,18 @@ def lambda_handler(event, context):
                 status, done = downloader.next_chunk()
                 print("Download %d%%." % int(status.progress() * 100))
             
-            # Build the file object
-            file = (file_metadata['name'], fh.getvalue(), file_metadata['mimeType'])
-            body['attachments[]'] = file
+            # Save to tmp folder
+            path = f"tmp/{file_metadata['name']}"
+            with open(path, 'wb') as tmpfile:
+                tmpfile.write(fh.getbuffer())
+            
+            # Attach the file
+            body['attachments[]'] = open(path, 'rb')
 
     # Delete tags for now
     del body['tags']
 
-    url = f'{FRESHSERVICE_DOMAIN}/api/v2/tickets'
+    url = f'https://{FRESHSERVICE_DOMAIN}/api/v2/tickets'
     print(url)
     response = requests.post(
         url = url,
