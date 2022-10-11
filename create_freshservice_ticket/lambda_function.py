@@ -8,10 +8,9 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 
-API_KEY = os.environ.get('FRESHSERVICE_API_KEY')
-API_KEY = 'NcJm9lH0xxzWZjJT3zq8'
+FRESHSERVICE_API_KEY_SECRET_NAME = os.environ.get('FRESHSERVICE_API_KEY_SECRET_NAME')
 FRESHSERVICE_DOMAIN = os.environ.get('FRESHSERVICE_DOMAIN')
-SVC_INFO_SECRET_NAME = 'design_forms_svc_credentials'
+SVC_INFO_SECRET_NAME = os.environ.get('SVC_INFO_SECRET_NAME')
 
 def lambda_handler(event, context):
 
@@ -45,6 +44,7 @@ def lambda_handler(event, context):
 
         # Credentiate the service account
         secret = get_secret_value(SVC_INFO_SECRET_NAME)
+        secret = json.loads(secret)
         credentials = service_account.Credentials.from_service_account_info(secret)
 
         # Build the service
@@ -79,13 +79,13 @@ def lambda_handler(event, context):
 
     # Delete tags for now
     del body['tags']
-
     url = f'https://{FRESHSERVICE_DOMAIN}/api/v2/tickets'
+    secret = get_secret_value(FRESHSERVICE_API_KEY_SECRET_NAME)
     print(url)
     response = requests.post(
         url = url,
         headers = headers,
-        auth = (API_KEY, '_'), 
+        auth = (secret, '_'), 
         data = body
     )
     
@@ -102,5 +102,4 @@ def get_secret_value(secret_name):
     session = boto3.session.Session()
     client = session.client(service_name='secretsmanager')
     get_secret_value_response = client.get_secret_value(SecretId=secret_name)
-    secret = json.loads(get_secret_value_response['SecretString'])
-    return secret
+    return get_secret_value_response['SecretString']
