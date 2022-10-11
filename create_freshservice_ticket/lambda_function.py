@@ -3,6 +3,7 @@ import requests
 import os
 import boto3
 import io
+import re
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -15,50 +16,45 @@ SVC_INFO_SECRET_NAME = os.environ.get('SVC_INFO_SECRET_NAME')
 def lambda_handler(event, context):
 
     print(json.dumps(event))
-    headers = {
-    'Content-Type': 'multipart/form-data',
-    }
     body = json.loads(event['body'])
 
     # The freshservice API currently only supports 'type' = 'Incident'
     # We will hardset this value to 'Incident' until the API supports other values
     body['type'] = 'Incident'
 
-    # Prepare the attachments, if any
-    files = None
-    if body.get('attachments'):
+    # Identify tags based on keywords in the description
+    new_tags = identify_tags(body['description'])
+    if body.get('tags'):
+        body['tags'].extend(new_tags)
+    else:
+        body['tags'] = new_tags
 
-        # Pop the attachments from the body
+    # Generate the url for ticket creation API
+    print(FRESHSERVICE_API_KEY_SECRET_NAME)
+    API_KEY = get_secret_value(FRESHSERVICE_API_KEY_SECRET_NAME)
+    url = f'https://{FRESHSERVICE_DOMAIN}/api/v2/tickets'
+
+    # Check if there are any attachments
+    if body.get('attachments'):
+        # If there are attchaments, the resquest will be a multipart/form-data request
+
+        # Prepare the multipart payload
         attachments = body['attachments']
         del body['attachments']
 
-        # Prepare the multipart data
-        multipart_data = dict()
-        for key in body:
-            multipart_data_key = key
-
-        print(attachments)
-
-        # The attachments are list of Google Drive file IDs
-        # We need to download the files and add them in a multipart/form-data request
-
-        # Credentiate the service account
+        # Build the Google drive client
         secret = get_secret_value(SVC_INFO_SECRET_NAME)
         secret = json.loads(secret)
         credentials = service_account.Credentials.from_service_account_info(secret)
-
-        # Build the service
         service = build('drive', 'v3', credentials=credentials)
 
-        # Download the files
-        files = {'attachments[]': []}
-        for attachment in attachments:
-                
+        # Download and add the attachments to the payload
+        files = list()
+        for attachment in attachments: 
             print(attachment)
             # Get the file name and mime type
             file_metadata = service.files().get(fileId=attachment, fields='name, mimeType').execute()
             print(file_metadata)
-
 
             # Get the file content
             request = service.files().get_media(fileId=attachment)
@@ -69,29 +65,36 @@ def lambda_handler(event, context):
                 status, done = downloader.next_chunk()
                 print("Download %d%%." % int(status.progress() * 100))
             
-            # Save to tmp folder
-            path = f"tmp/{file_metadata['name']}"
-            with open(path, 'wb') as tmpfile:
-                tmpfile.write(fh.getbuffer())
-            
             # Attach the file
-            body['attachments[]'] = open(path, 'rb')
+            files.append(('attachments[]', (file_metadata['name'], fh.getbuffer(), file_metadata['mimeType'])))
+        
+        # Pop the tags from the payload
+        tags = body['tags']
+        print(tags)
+        del body['tags']
 
-    # Delete tags for now
-    del body['tags']
-    url = f'https://{FRESHSERVICE_DOMAIN}/api/v2/tickets'
-    secret = get_secret_value(FRESHSERVICE_API_KEY_SECRET_NAME)
-    print(url)
-    response = requests.post(
-        url = url,
-        headers = headers,
-        auth = (secret, '_'), 
-        data = body
-    )
-    
-    print(response.status_code)
-    print(response.text)
-
+        # Add the tags to the files payload
+        files.extend([
+            ('tags[]', (None, tag)) for tag in tags
+        ])
+        
+        response = requests.post(url, auth=(API_KEY, '_'), data=body, files=files)
+        print(response.status_code)
+        print(response.text)
+        
+    else:
+        # In case of no attachments, will be used as a regular JSON request
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        response = requests.post(
+            url = url,
+            headers = headers,
+            auth = (API_KEY, '_'), 
+            json = body
+        )
+        print(response.status_code)
+        print(response.text)
 
     return {
         'statusCode': 200,
@@ -102,4 +105,19 @@ def get_secret_value(secret_name):
     session = boto3.session.Session()
     client = session.client(service_name='secretsmanager')
     get_secret_value_response = client.get_secret_value(SecretId=secret_name)
-    return get_secret_value_response['SecretString']
+    return get_secret_value['SecretString']
+
+def identify_tags(text):
+    
+    # Creates tags for the card based on keywords in the description
+    tags = list()
+
+    # lower the text
+    text = text.lower()
+    keywords = [
+        'video', 'digital presentation', 'physical presentation', 'brochure', 'business'
+        ]
+    for keyword in keywords:
+        if keyword in text:
+            tags.append(keyword.replace(' ', '-'))
+    return tags
